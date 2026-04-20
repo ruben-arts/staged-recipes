@@ -1,0 +1,467 @@
+context:
+  full_version: "10.9.0.34"
+  version: "10.9.0"
+
+recipe:
+  name: tensorrt-sdk
+  version: ${{ full_version }}
+
+source:
+  - if: linux and aarch64 and "12." in cuda_compiler_version and arm_variant_type == "sbsa"
+    then:
+      url: https://developer.nvidia.com/downloads/compute/machine-learning/tensorrt/${{ version }}/tars/TensorRT-${{ full_version }}.Linux.aarch64-gnu.cuda-12.8.tar.gz
+  - if: linux and x86_64 and "11." in cuda_compiler_version
+    then:
+      url: https://developer.nvidia.com/downloads/compute/machine-learning/tensorrt/${{ version }}/tars/TensorRT-${{ full_version }}.Linux.x86_64-gnu.cuda-11.8.tar.gz
+      sha256: 9d0b5d81e388c5103c46c2f766f407781c40e1d6c9bf2584a05be64b13da04b0
+  - if: linux and x86_64 and "12." in cuda_compiler_version
+    then:
+      url: https://developer.nvidia.com/downloads/compute/machine-learning/tensorrt/${{ version }}/tars/TensorRT-${{ full_version }}.Linux.x86_64-gnu.cuda-12.8.tar.gz
+      sha256: 33be0e61e3bf177bbbcabb4892bf013f0c8ac71d2be73f2803848a382cb14272
+  - if: win and x86_64 and "11." in cuda_compiler_version
+    then:
+      url: https://developer.nvidia.com/downloads/compute/machine-learning/tensorrt/${{ version }}/zip/TensorRT-${{ full_version }}.Windows.win10.cuda-11.8.zip
+      sha256: 9cab2924331dcc92ef43e257155d28d2f40d95482b860c60fc24a91e99ea7152
+  - if: win and x86_64 and "12." in cuda_compiler_version
+    then:
+      url: https://developer.nvidia.com/downloads/compute/machine-learning/tensorrt/${{ version }}/zip/TensorRT-${{ full_version }}.Windows.win10.cuda-12.8.zip
+      sha256: c2758eb60191f01a47b24f54700e5463f577ebe129cd18fe835d0aa9f1e1a16d
+
+build:
+  number: 0
+
+outputs:
+  - staging:
+      name: tensorrt-build
+    build:
+      script:
+        - if: linux
+          then:
+            - rm -rf data samples doc
+            - check-glibc lib/*.so.*
+            - mkdir -p ${PREFIX}/bin
+            - mv -v bin/* ${PREFIX}/bin
+            - mkdir -p ${PREFIX}/include
+            - mv -v include/* ${PREFIX}/include
+            - mkdir -p ${PREFIX}/lib
+            - mv -v lib/* ${PREFIX}/lib
+        - if: win
+          then:
+            - rmdir /s /q data samples doc
+            - md %PREFIX%\Library\bin 2>nul
+            - move lib\*.dll %PREFIX%\Library\bin
+            - md %PREFIX%\Library\include 2>nul
+            - move include\* %PREFIX%\Library\include
+            - md %PREFIX%\Library\lib 2>nul
+            - move lib\*lib %PREFIX%\Library\lib
+    requirements:
+      build:
+        - if: linux
+          then: cf-nvidia-tools >=1,<2
+
+  - package:
+      name: libnvinfer
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer*.so.*
+          - if: win
+            then: Library/bin/nvinfer*.dll
+        exclude:
+          - if: linux
+            then:
+              - lib/libnvinfer_dispatch.so.*
+              - lib/libnvinfer_lean.so.*
+              - lib/libnvinfer_plugin.so.*
+              - lib/libnvinfer_vc_plugin.so.*
+              - lib/libnvonnxparser.so.*
+          - if: win
+            then:
+              - Library/bin/nvinfer_dispatch*.dll
+              - Library/bin/nvinfer_lean*.dll
+              - Library/bin/nvinfer_plugin*.dll
+              - Library/bin/nvinfer_vc_plugin*.dll
+              - Library/bin/nvonnxparser*.dll
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+
+  - package:
+      name: libnvinfer-dispatch
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_dispatch.so.*
+          - if: win
+            then: Library/bin/nvinfer_dispatch*.dll
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+
+  - package:
+      name: libnvinfer-lean
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_lean.so.*
+          - if: win
+            then: Library/bin/nvinfer_lean*.dll
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+
+  - package:
+      name: libnvinfer-plugin
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_plugin.so.*
+          - if: win
+            then: Library/bin/nvinfer_plugin*.dll
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+      host:
+        - ${{ pin_subpackage("libnvinfer", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer", exact=True) }}
+
+  - package:
+      name: libnvinfer-vc-plugin
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_vc_plugin.so.*
+          - if: win
+            then: Library/bin/nvinfer_vc_plugin*.dll
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+
+  - package:
+      name: libnvonnxparser
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvonnxparser.so.*
+          - if: win
+            then: Library/bin/nvonnxparser*.dll
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+
+  - package:
+      name: libnvinfer-headers
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then:
+              - include/NvInfer*
+              - include/NvOnnx*
+          - if: win
+            then:
+              - Library/include/NvInfer*
+              - Library/include/NvOnnx*
+
+  - package:
+      name: libnvinfer-dev
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then:
+              - bin/trtexec
+              - lib/libnvinfer*.so
+          - if: win
+            then:
+              - Library/bin/trtexec
+              - Library/lib/nvinfer*.lib
+        exclude:
+          - if: linux
+            then:
+              - lib/libnvinfer_dispatch.so
+              - lib/libnvinfer_lean.so
+              - lib/libnvinfer_plugin.so
+              - lib/libnvinfer_vc_plugin.so
+              - lib/libnvonnxparser.so
+          - if: win
+            then:
+              - Library/lib/nvinfer_dispatch*.lib
+              - Library/lib/nvinfer_lean*.lib
+              - Library/lib/nvinfer_plugin*.lib
+              - Library/lib/nvinfer_vc_plugin*.lib
+              - Library/lib/nvonnxparser*.lib
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+      host:
+        - ${{ pin_subpackage("libnvinfer", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      # Upstream claims the package version tracks both API and ABI breaks
+      run_exports:
+        - ${{ pin_subpackage("libnvinfer") }}
+
+  - package:
+      name: libnvinfer-dispatch-dev
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_dispatch.so
+          - if: win
+            then: Library/lib/nvinfer_dispatch*.lib
+    requirements:
+      host:
+        - ${{ pin_subpackage("libnvinfer-dispatch", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-dispatch", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run_exports:
+        - ${{ pin_subpackage("libnvinfer-dispatch") }}
+
+  - package:
+      name: libnvinfer-lean-dev
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_lean.so
+          - if: win
+            then: Library/lib/nvinfer_lean*.lib
+    requirements:
+      host:
+        - ${{ pin_subpackage("libnvinfer-lean", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-lean", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run_exports:
+        - ${{ pin_subpackage("libnvinfer-lean") }}
+
+  - package:
+      name: libnvinfer-plugin-dev
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_plugin.so
+          - if: win
+            then: Library/lib/nvinfer_plugin*.lib
+    requirements:
+      host:
+        - ${{ pin_subpackage("libnvinfer-plugin", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-plugin", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run_exports:
+        - ${{ pin_subpackage("libnvinfer-plugin") }}
+
+  - package:
+      name: libnvinfer-vc-plugin-dev
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvinfer_vc_plugin.so
+          - if: win
+            then: Library/lib/nvinfer_vc_plugin*.lib
+    requirements:
+      host:
+        - ${{ pin_subpackage("libnvinfer-vc-plugin", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-vc-plugin", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run_exports:
+        - ${{ pin_subpackage("libnvinfer-vc-plugin") }}
+
+  - package:
+      name: libnvonnxparser-dev
+    inherit: tensorrt-build
+    build:
+      files:
+        include:
+          - if: linux
+            then: lib/libnvonnxparser.so
+          - if: win
+            then: Library/lib/nvonnxparser*.lib
+    requirements:
+      host:
+        - ${{ pin_subpackage("libnvonnxparser", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvonnxparser", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+      run_exports:
+        - ${{ pin_subpackage("libnvonnxparser") }}
+
+  - package:
+      name: libnvinfer-static
+    inherit: tensorrt-build
+    build:
+      skip: ${{ not linux }}
+      files:
+        include:
+          - lib/libnvinfer*.a
+          - lib/libnvonnx*.a
+    requirements:
+      host:
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-dev", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-headers", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-dev", exact=True) }}
+
+  - package:
+      name: tensorrt
+    build:
+      script:
+        - if: linux
+          then: python -m pip install ${SRC_DIR}/python/tensorrt-${{ full_version }}-cp${{ python | replace(".", "") }}* -vv
+        - if: win
+          then: python -m pip install %SRC_DIR%\python\tensorrt-${{ full_version }}-cp${{ python | replace(".", "") }}-none-win_amd64.whl -vv
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+        - if: build_platform != target_platform
+          then:
+            - cross-python_${{ target_platform }}
+            - python
+      host:
+        - python
+        - pip
+        - ${{ pin_subpackage("libnvinfer", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-plugin", exact=True) }}
+        - ${{ pin_subpackage("libnvonnxparser", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer", exact=True) }}
+        - ${{ pin_subpackage("libnvinfer-plugin", exact=True) }}
+        - ${{ pin_subpackage("libnvonnxparser", exact=True) }}
+    tests:
+      - python:
+          imports:
+            - tensorrt
+      - script:
+          - pip check
+          - python -c "import tensorrt; assert tensorrt.Builder(tensorrt.Logger())"
+        requirements:
+          run:
+            - pip
+
+  - package:
+      name: tensorrt-lean
+    build:
+      script:
+        - if: linux
+          then: python -m pip install ${SRC_DIR}/python/tensorrt_lean-${{ full_version }}-cp${{ python | replace(".", "") }}* -vv
+        - if: win
+          then: python -m pip install %SRC_DIR%\python\tensorrt_lean-${{ full_version }}-cp${{ python | replace(".", "") }}-none-win_amd64.whl -vv
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+        - if: build_platform != target_platform
+          then:
+            - cross-python_${{ target_platform }}
+            - python
+      host:
+        - python
+        - pip
+        - ${{ pin_subpackage("libnvinfer-lean", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-lean", exact=True) }}
+    tests:
+      - python:
+          imports:
+            - tensorrt_lean
+      - script:
+          - pip check
+          - python -c "import tensorrt_lean; assert tensorrt_lean.Runtime(tensorrt_lean.Logger())"
+        requirements:
+          run:
+            - pip
+
+  - package:
+      name: tensorrt-dispatch
+    build:
+      script:
+        - if: linux
+          then: python -m pip install ${SRC_DIR}/python/tensorrt_dispatch-${{ full_version }}-cp${{ python | replace(".", "") }}* -vv
+        - if: win
+          then: python -m pip install %SRC_DIR%\python\tensorrt_dispatch-${{ full_version }}-cp${{ python | replace(".", "") }}-none-win_amd64.whl -vv
+    requirements:
+      build:
+        - ${{ compiler("c") }}
+        - ${{ compiler("cxx") }}
+        - ${{ stdlib("c") }}
+        - if: build_platform != target_platform
+          then:
+            - cross-python_${{ target_platform }}
+            - python
+      host:
+        - python
+        - pip
+        - ${{ pin_subpackage("libnvinfer-dispatch", exact=True) }}
+      run:
+        - ${{ pin_subpackage("libnvinfer-dispatch", exact=True) }}
+    tests:
+      - python:
+          imports:
+            - tensorrt_dispatch
+      - script:
+          - pip check
+          - python -c "import tensorrt_dispatch; assert tensorrt_dispatch.Runtime(tensorrt_dispatch.Logger())"
+        requirements:
+          run:
+            - pip
+
+about:
+  homepage: https://developer.nvidia.com/tensorrt
+  license: LicenseRef-TensorRT
+  summary: NVIDIA TensorRT SDK for high-performance deep learning inference
+
+extra:
+  feedstock-name: tensorrt
+  recipe-maintainers:
+    - conda-forge/cuda
