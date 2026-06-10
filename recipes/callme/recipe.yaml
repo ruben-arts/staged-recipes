@@ -87,6 +87,9 @@ about:
     suppression via webrtc-audio-processing. This package ships both the
     command-line client (callme-cli) and the desktop GUI (callme-egui).
   license: MIT OR Apache-2.0
+  # LICENSE-APACHE and LICENSE-MIT are shipped in the recipe directory: they
+  # were added upstream after the v0.1.4 tag, so the release tarball does not
+  # contain them yet. Remove the copies once a release includes them.
   license_file:
     - LICENSE-APACHE
     - LICENSE-MIT
