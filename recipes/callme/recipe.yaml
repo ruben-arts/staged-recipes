@@ -6,8 +6,17 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/n0-computer/callme/archive/refs/tags/v${{ version }}.tar.gz
-  sha256: f5386fbe09fcc821b379efa315e021717c400f8280448276b1bd29baffe24202
+  - url: https://github.com/n0-computer/callme/archive/refs/tags/v${{ version }}.tar.gz
+    sha256: f5386fbe09fcc821b379efa315e021717c400f8280448276b1bd29baffe24202
+  # The license files were added upstream after the v0.1.4 tag, so the release
+  # tarball does not contain them yet. Fetch them from the repository directly;
+  # drop these two sources once a release includes them.
+  - url: https://raw.githubusercontent.com/n0-computer/callme/afd586fa9772dd516b066f7c73892e0946823bc6/LICENSE-MIT
+    sha256: 33616ec4c88b6e00de66e6c06f1a55d80bb32a9d7939f3aa83d28e673a1adcae
+    file_name: LICENSE-MIT
+  - url: https://raw.githubusercontent.com/n0-computer/callme/afd586fa9772dd516b066f7c73892e0946823bc6/LICENSE-APACHE
+    sha256: 7986218ec4ea89de3511a843ae27fea2584a525036c220ff7b26589179f07888
+    file_name: LICENSE-APACHE
 
 build:
   number: 0
@@ -87,9 +96,6 @@ about:
     suppression via webrtc-audio-processing. This package ships both the
     command-line client (callme-cli) and the desktop GUI (callme-egui).
   license: MIT OR Apache-2.0
-  # LICENSE-APACHE and LICENSE-MIT are shipped in the recipe directory: they
-  # were added upstream after the v0.1.4 tag, so the release tarball does not
-  # contain them yet. Remove the copies once a release includes them.
   license_file:
     - LICENSE-APACHE
     - LICENSE-MIT
