@@ -1,0 +1,98 @@
+context:
+  version: "0.1.4"
+
+package:
+  name: callme
+  version: ${{ version }}
+
+source:
+  url: https://github.com/n0-computer/callme/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: f5386fbe09fcc821b379efa315e021717c400f8280448276b1bd29baffe24202
+
+build:
+  number: 0
+  script:
+    env:
+      CARGO_PROFILE_RELEASE_STRIP: symbols
+      CARGO_PROFILE_RELEASE_LTO: fat
+      # Ring's C/asm code requires clang-cl (not MSVC cl.exe) when targeting
+      # aarch64-pc-windows-msvc. These vars are only consulted by cargo / cc-rs
+      # when CARGO_BUILD_TARGET is that triple, so they are inert elsewhere.
+      CC_aarch64_pc_windows_msvc: clang-cl
+      AR_aarch64_pc_windows_msvc: llvm-lib
+      CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER: lld-link
+    content:
+      - if: unix
+        then:
+          # bindgen (pulled in by webrtc-audio-processing-sys) needs libclang
+          - export LIBCLANG_PATH=${BUILD_PREFIX}/lib
+          - cargo auditable install --locked --no-track --bins --root ${{ PREFIX }} --path callme-cli
+          - cargo auditable install --locked --no-track --bins --root ${{ PREFIX }} --path callme-egui
+        else:
+          # The bundled webrtc-audio-processing C++ sources do not build with
+          # MSVC, so upstream disables the default audio-processing feature on
+          # Windows (see .github/workflows/release.yml).
+          - if: target_platform == "win-arm64"
+            then:
+              - cargo auditable install --locked --no-track --bins --no-default-features --root %LIBRARY_PREFIX% --path callme-cli --target aarch64-pc-windows-msvc
+              - cargo auditable install --locked --no-track --bins --no-default-features --root %LIBRARY_PREFIX% --path callme-egui --target aarch64-pc-windows-msvc
+            else:
+              - cargo auditable install --locked --no-track --bins --no-default-features --root %LIBRARY_PREFIX% --path callme-cli
+              - cargo auditable install --locked --no-track --bins --no-default-features --root %LIBRARY_PREFIX% --path callme-egui
+      - cargo-bundle-licenses --format yaml --output ./THIRDPARTY.yml
+
+requirements:
+  build:
+    - ${{ stdlib('c') }}
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - ${{ compiler('rust') }}
+    - cargo-bundle-licenses
+    - cargo-auditable
+    - if: unix
+      then:
+        # webrtc-audio-processing-sys builds its bundled C++ sources with
+        # autotools and generates bindings with bindgen (libclang)
+        - make
+        - autoconf
+        - automake
+        - libtool
+        - pkg-config
+        - libclang
+    - if: target_platform == "win-arm64"
+      then:
+        - clang
+        - lld
+  host:
+    - if: linux
+      then:
+        - alsa-lib
+        - dbus
+
+tests:
+  - script: callme-cli --help
+  - package_contents:
+      bin:
+        - callme-cli
+        - callme-egui
+      strict: true
+
+about:
+  homepage: https://github.com/n0-computer/callme
+  summary: Make voice calls over iroh, with a CLI (callme-cli) and GUI (callme-egui)
+  description: |
+    callme is an experimental peer-to-peer audio calling toolkit built on the
+    iroh networking platform. Audio is encoded with the Opus codec and streamed
+    over iroh-roq (RTP over QUIC), with optional echo cancellation and noise
+    suppression via webrtc-audio-processing. This package ships both the
+    command-line client (callme-cli) and the desktop GUI (callme-egui).
+  license: MIT OR Apache-2.0
+  license_file:
+    - LICENSE-APACHE
+    - LICENSE-MIT
+    - THIRDPARTY.yml
+  repository: https://github.com/n0-computer/callme
+
+extra:
+  recipe-maintainers:
+    - ruben-arts
